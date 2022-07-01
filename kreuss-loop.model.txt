@@ -1,0 +1,30 @@
+#
+# Kreuss Loops for narrow passages
+#
+
+boost 8000
+height 10
+
+# southern wire going eastwards
+
+wire  250     0
+wire  10    -10
+wire -120     0
+wire  10      9.5
+wire  250     0
+
+# east end
+
+wire    0    10
+
+# northern wire going westwards
+
+wire -250     0
+wire  -10    10
+wire  120     0
+wire  -10    -9.5
+wire -250     0
+
+# west end
+
+wire    0   -10
