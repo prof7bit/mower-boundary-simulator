@@ -3,6 +3,7 @@ unit WireLoop;
 {$mode ObjFPC}{$H+}
 {$ModeSwitch arrayoperators}
 {$ModeSwitch advancedrecords}
+{$optimization fastmath}
 
 interface
 
@@ -173,15 +174,17 @@ var
   P, D, F: TVector;
   Dist, DistNorm: TVector;
   DistMag: Double;
+  DistMagCube: Double;
 begin
+  // Biot-Savart
   Result := Vector(0, 0, 0);
   for I := 0 to Length(FCurrPoints) - 1 do begin
     P := FCurrPoints[I];
     D := FCurrDirs[I];
-    Dist := P - P2;
+    Dist := P2 - P;
     DistMag := Mag(Dist);
-    DistNorm := Dist / DistMag;
-    F := (DistNorm * D) / (DistMag * DistMag);
+    DistMagCube := DistMag * DistMag * DistMag;
+    F := (D * Dist) / DistMagCube;
     Result.Add(F);
   end;
   Result := Result * FBoost;
