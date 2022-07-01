@@ -1,0 +1,46 @@
+boost 8000
+height 10
+
+wire 1010 0
+wire 0 400
+wire -200 0
+
+# east island
+
+wire 0 -120
+wire 70 -45
+wire 0 -80
+wire -75 -45
+wire -75  45
+wire 0 80
+wire 70 45
+wire 0 120
+
+wire -300 0
+
+# middle island
+
+wire 0 -120
+wire 70 -45
+wire 0 -80
+wire -70 -45
+wire -70  45
+wire 0 80
+wire 70 45
+wire 0 120
+
+wire -300 0
+
+# west island (crossed wires, wrong direction!)
+
+wire 0 -120
+wire -70 -45
+wire 0 -80
+wire 70 -45
+wire 70  45
+wire 0 80
+wire -70 45
+wire 0 120
+
+wire -200 0
+wire 0 -400

@@ -1,0 +1,10 @@
+boost 8000
+height 10
+
+wire -100 0
+wire 0 -100
+wire 20 -20
+wire 48 0
+wire 30 2
+wire 2 30
+wire 0 88
