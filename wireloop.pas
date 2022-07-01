@@ -192,7 +192,6 @@ end;
 
 constructor TWireLoop.Create;
 begin
-  FResolution := 0.5;
   FPlotPlane := TPlotPlane.Create;
 end;
 
@@ -210,10 +209,24 @@ var
   Parts2: TStringArray;
   Part: String;
   X, Y: Double;
+  FS: TFormatSettings;
+
+  function ToDouble(S: String; D: Double): Double;
+  begin
+    Result := StrToFloatDef(S, D, FS);
+  end;
+
 begin
   if not FileExists(FileName) then
     exit;
 
+  FResolution := 0.5;
+  FSensorHeight := 10;
+  FBoost := 5000;
+
+  FS := DefaultFormatSettings;
+  FS.DecimalSeparator := '.';
+  FS.ThousandSeparator := ',';
   SL := TStringList.Create;
   SL.LoadFromFile(FileName);
 
@@ -226,15 +239,15 @@ begin
         Parts2 += [Trim(Part)];
     if Length(Parts2) > 0 then begin
       if (Parts2[0] = 'wire') and (Length(Parts2) = 3) then begin
-        X := StrToFloatDef(Parts2[1], 0);
-        Y := StrToFloatDef(Parts2[2], 0);
+        X := ToDouble(Parts2[1], 0);
+        Y := ToDouble(Parts2[2], 0);
         FSegments += [VectorXY(X, Y)];
       end;
       if (Parts2[0] = 'boost') and (Length(Parts2) = 2) then begin
-        FBoost := StrToFloatDef(Parts2[1], 1);
+        FBoost := ToDouble(Parts2[1], FBoost);
       end;
       if (Parts2[0] = 'height') and (Length(Parts2) = 2) then begin
-        FSensorHeight := StrToFloatDef(Parts2[1], 1);
+        FSensorHeight := ToDouble(Parts2[1], FSensorHeight);
       end;
     end;
   end;
