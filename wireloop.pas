@@ -7,7 +7,7 @@ unit WireLoop;
 interface
 
 uses
-  Classes, SysUtils, Vectors, Math;
+  Classes, SysUtils, Vectors, Math, DebugPrint;
 
 type
   { TPlotPlane
@@ -157,7 +157,7 @@ begin
       FCurrDirs += [Dir];
     end;
   end;
-  WriteLn(Length(FCurrPoints));
+  //Print('created %d points', [Length(FCurrPoints)]);
 end;
 
 procedure TWireLoop.SetResoluton(AValue: Double);

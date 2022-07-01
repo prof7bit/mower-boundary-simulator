@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ExtCtrls, StdCtrls,
-  WireLoop, Vectors, Math, FileUtil, LazFileUtils, IniFiles;
+  WireLoop, Vectors, Math, FileUtil, LazFileUtils, IniFiles, DebugPrint;
 
 type
 
@@ -31,8 +31,6 @@ type
     FLoop: TWireLoop;
     FWantClose: Boolean;
     procedure FillCombo;
-    procedure Print(Txt: String);
-    procedure Print(Fmt: String; Arg: array of const);
     procedure AsyncRedraw(Data: PtrInt);
   public
 
@@ -222,16 +220,6 @@ begin
   end;
   SL.Free;
   ComboBoxModel.Text := T;
-end;
-
-procedure TFormMain.Print(Txt: String);
-begin
-  WriteLn(txt);
-end;
-
-procedure TFormMain.Print(Fmt: String; Arg: array of const);
-begin
-  Print(Format(Fmt, Arg));
 end;
 
 procedure TFormMain.AsyncRedraw(Data: PtrInt);
