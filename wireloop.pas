@@ -102,17 +102,24 @@ begin
 end;
 
 procedure TPlotPlane.SetScreenRect(Size: TRect);
+const
+  BORDER_CM = 50;
+  BORDER_PX = 100;
 var
   W, H: Double;
   SX, SY: Double;
+
 begin
-  W := Width + 50;
-  H := Height + 50;
+  W := Width + BORDER_CM;
+  H := Height + BORDER_CM;
 
   FScreenRect := Size;
   SX := Size.Width / W;
   SY := Size.Height / H;
   FPlotScale := Math.Min(SX, SY);
+
+  if Size.Height - Height * FPlotScale < BORDER_PX then
+    FPlotScale := (Size.Height - BORDER_PX) / Height;
 
   FPlotOffsX := (Size.Width / FPlotScale - Width) / 2;
   FPlotOffsY := (Size.Height / FPlotScale - Height) / 2;
