@@ -2,4 +2,6 @@ boundary_visualizer
 *.lps
 *.res
 *.exe
+*.png
 lib
+debug.txt
