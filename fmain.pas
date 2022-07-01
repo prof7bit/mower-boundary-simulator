@@ -13,11 +13,13 @@ type
   { TFormMain }
 
   TFormMain = class(TForm)
+    ButtonSave: TButton;
     ButtonReload: TButton;
     ComboBoxModel: TComboBox;
     Image1: TImage;
     procedure Button1Click(Sender: TObject);
     procedure ButtonReloadClick(Sender: TObject);
+    procedure ButtonSaveClick(Sender: TObject);
     procedure ComboBoxModelChange(Sender: TObject);
     procedure FormCloseQuery(Sender: TObject; var CanClose: Boolean);
     procedure FormCreate(Sender: TObject);
@@ -72,6 +74,14 @@ begin
   ComboBoxModelChange(nil);
 end;
 
+procedure TFormMain.ButtonSaveClick(Sender: TObject);
+var
+  Basename: String;
+begin
+  Basename := ExtractFileNameOnly(ExtractFileNameOnly(ComboBoxModel.Text));
+  Image1.Picture.SaveToFile(Basename + '.png', 'png');
+end;
+
 procedure TFormMain.ComboBoxModelChange(Sender: TObject);
 begin
   FLoop.LoadLoop(ComboBoxModel.Text);
@@ -114,18 +124,18 @@ var
   Canv: TCanvas;
 
   procedure DrawScale(X, Y, Size: Integer; Txt: String);
+  var
+    X1, Y1: Integer;
   begin
-    P0.X := X;
-    P0.Y := Y;
-    P1.X := P0.X + Size * Round(Plane.Scale);
-    P1.Y := P0.Y;
+    X1 := X + Size * Round(Plane.Scale);
+    Y1 := Y;
     Canv.Pen.Color := clBlack;
     Canv.Font.Size := 10;
     Canv.Brush.Style := bsClear;
-    Canv.Line(P0, P1);
-    Canv.Line(P0.X, P0.Y-5, P0.X, P0.Y+5);
-    Canv.Line(P1.X, P1.Y-5, P1.X, P1.Y+5);
-    Canv.TextOut(P1.X + 10, P1.Y - 10, Txt);
+    Canv.Line(X, Y, X1, Y1);
+    Canv.Line(X, Y-5, X, Y+5);
+    Canv.Line(X1, Y1-5, X1, Y1+5);
+    Canv.TextOut(X1 + 10, Y1 - 10, Txt);
   end;
 
 begin
@@ -143,17 +153,16 @@ begin
     P0 := P1;
   end;
 
-  P := VectorXY(Plane.X0, Plane.Y0);
-  P0 := Plane.VectorToScreen(P);
-  DrawScale(P0.X, P0.Y, 10, '10 cm');
-  DrawScale(P0.X, P0.Y + 12, 100, '1 m');
+  p0.X := Image1.ClientRect.Left;
+  p0.Y := Image1.ClientRect.Bottom;
+  DrawScale(P0.X + 10, P0.Y - 27, 10, '10 cm');
+  DrawScale(P0.X + 10, P0.Y - 15, 100, '1 m');
 
-  P := VectorXY(Plane.X0, Plane.YMax + 15);
-  P0 := Plane.VectorToScreen(P);
-  Canv.TextOut(P0.X, P0.Y, Format('Height above wire: %g cm',
-    [FLoop.SensorHeight]));
-  Canv.TextOut(P0.X, P0.Y - 15, Format('Model: %s',
+  P0 := Image1.ClientRect.TopLeft;
+  Canv.TextOut(P0.X + 10, P0.Y + 10, Format('Model: %s',
     [ExtractFileNameOnly(ExtractFileNameOnly(ComboBoxModel.Text))]));
+  Canv.TextOut(P0.X + 10, P0.Y + 22, Format('Height above wire: %g cm',
+    [FLoop.SensorHeight]));
 end;
 
 procedure TFormMain.DrawField;
@@ -163,7 +172,9 @@ var
   V, F: TVector;
   Canv : TCanvas;
   MZ: Integer;
+  T0: TDateTime;
 begin
+  T0 := Now;
   FWantClose := False;
   FLoop.Resoluton := 1;
   Canv := Image1.Picture.Bitmap.Canvas;
@@ -198,6 +209,7 @@ begin
       Break;
   end;
   DrawWire;
+  Print((Now - T0) * 24 * 60 * 60);
 end;
 
 procedure TFormMain.FormResize(Sender: TObject);

@@ -82,6 +82,11 @@
         <IsPartOfProject Value="True"/>
         <UnitName Value="WireLoop"/>
       </Unit>
+      <Unit>
+        <Filename Value="debugprint.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="DebugPrint"/>
+      </Unit>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
@@ -96,12 +101,14 @@
     <CodeGeneration>
       <SmartLinkUnit Value="True"/>
       <Optimizations>
-        <OptimizationLevel Value="3"/>
+        <OptimizationLevel Value="4"/>
       </Optimizations>
     </CodeGeneration>
     <Linking>
       <Debugging>
+        <GenerateDebugInfo Value="False"/>
         <DebugInfoType Value="dsDwarf2Set"/>
+        <StripSymbols Value="True"/>
       </Debugging>
       <LinkSmart Value="True"/>
       <Options>

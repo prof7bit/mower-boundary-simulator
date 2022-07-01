@@ -2,6 +2,7 @@ unit Vectors;
 
 {$mode ObjFPC}{$H+}
 {$modeswitch advancedrecords}
+{$optimization fastmath}
 
 interface
 
@@ -107,6 +108,7 @@ begin
   Result.Y := Y;
   Result.Z := 0;
 end;
+
 
 function Ang(A, B: TVector): Double;
 var
