@@ -243,9 +243,10 @@ var
   C, C1: Byte;
   LR: TLineResult;
   Canv: TCanvas;
-  WireVisible: Boolean;
+  WireHiddenCounter: Integer;
   Bitmap: TBitmap;
   SL: PUInt32;
+  Raw: PUInt32;
 
   Mag: Integer;
   Dir: Boolean;
@@ -255,7 +256,7 @@ begin
   T0 := Now;
   FWantStop := False;
   DrawWire;
-  WireVisible := True;
+  WireHiddenCounter := 0;
   NumThreads := GetSystemThreadCount;
   Y := 0;
   H := Image1.ClientRect.Height div NumThreads;
@@ -289,19 +290,23 @@ begin
         end;
       end;
       LR.Free;
-      WireVisible := False;
+      Inc(WireHiddenCounter);
+      if WireHiddenCounter > 64 then begin
+        DrawWire;
+        WireHiddenCounter := 0;
+      end;
       Application.ProcessMessages;
     end
     else begin
-      if not WireVisible then begin
+      if WireHiddenCounter > 0 then begin
         DrawWire;
-        WireVisible := True;
+        WireHiddenCounter := 0;
       end;
       Application.ProcessMessages;
       Sleep(1);
     end;
   until (FThreadCount = 0) and FResultQueue.IsEmpty;
-  if not WireVisible then
+  if WireHiddenCounter > 0 then
     DrawWire;
   Print('time: %f s', [(Now - T0) * 24 * 60 * 60]);
 end;
