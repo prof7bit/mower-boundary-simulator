@@ -185,7 +185,7 @@ procedure TFormMain.ButtonSaveClick(Sender: TObject);
 var
   Basename: String;
 begin
-  Basename := ExtractFileNameOnly(ExtractFileNameOnly(ComboBoxModel.Text));
+  Basename := ExtractFileNameOnly(ComboBoxModel.Text);
   Image1.Picture.SaveToFile(Basename + '.png', 'png');
 end;
 
@@ -270,7 +270,7 @@ begin
 
   P0 := Image1.ClientRect.TopLeft;
   Canv.TextOut(P0.X + 10, P0.Y + 10, Format('Model: %s',
-    [ExtractFileNameOnly(ExtractFileNameOnly(ComboBoxModel.Text))]));
+    [ExtractFileNameOnly(ComboBoxModel.Text)]));
   Canv.TextOut(P0.X + 10, P0.Y + 22, Format('Height above wire: %g cm',
     [FLoop.SensorHeight]));
 end;
@@ -369,7 +369,7 @@ begin
   T := ComboBoxModel.Text;
   ComboBoxModel.Items.Clear;
   SL := TStringList.Create;
-  FindAllFiles(SL, GetCurrentDir, '*.model.txt', False);
+  FindAllFiles(SL, GetCurrentDir + DirectorySeparator + 'models', '*.txt', False);
   for S in SL do begin
     ComboBoxModel.Items.Append(ExtractFileName(S));
   end;

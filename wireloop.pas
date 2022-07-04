@@ -227,6 +227,7 @@ var
   end;
 
 begin
+  Filename := 'models' + DirectorySeparator + Filename;
   if not FileExists(FileName) then
     exit;
 
