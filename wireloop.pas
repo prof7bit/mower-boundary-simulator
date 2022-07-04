@@ -47,8 +47,8 @@ type
     FSegments: TVectorArray;
     FPlotPlane: TPlotPlane;
     FResolution: Double;
-    FCurrPoints: TVectorArray;
-    FCurrDirs: TVectorArray;
+    FCurrPos: TVectorArray;
+    FCurrVect: TVectorArray;
     FBoost: Double;
     FSensorHeight: Double;
     procedure CreateCurrentPointsList;
@@ -62,6 +62,7 @@ type
     function CalcFieldAt(P2: TVector): TVector;
     property Resoluton: Double read FResoluton write SetResoluton;
     property SensorHeight: Double read FSensorHeight write FSensorHeight;
+    function WireLength: Double;
   end;
 
 
@@ -143,22 +144,22 @@ end;
 
 procedure TWireLoop.CreateCurrentPointsList;
 var
-  Seg, Dir, Abs: TVector;
+  Seg, Vec, HalfVec, Pos: TVector;
   NumPoints, I: Integer;
 begin
-  FCurrPoints := [];
-  FCurrDirs := [];
-  Abs := Vector(0, 0, 0);
+  FCurrPos := [];
+  FCurrVect := [];
+  Pos := Vector(0, 0, 0);
   for Seg in FSegments do begin
     NumPoints := Math.Ceil(Mag(Seg) / FResolution);
-    Dir := Seg / NumPoints;
+    Vec := Seg / NumPoints;
+    HalfVec := Vec / 2;
     for I := 0 to NumPoints - 1 do begin
-      Abs.Add(Dir);
-      FCurrPoints += [Abs];
-      FCurrDirs += [Dir];
+      FCurrPos += [Pos + HalfVec];
+      FCurrVect += [Vec];
+      Pos.Add(Vec);
     end;
   end;
-  //Print('created %d points', [Length(FCurrPoints)]);
 end;
 
 procedure TWireLoop.SetResoluton(AValue: Double);
@@ -178,9 +179,9 @@ var
 begin
   // Biot-Savart
   Result := Vector(0, 0, 0);
-  for I := 0 to Length(FCurrPoints) - 1 do begin
-    P := FCurrPoints[I];
-    D := FCurrDirs[I];
+  for I := 0 to Length(FCurrPos) - 1 do begin
+    P := FCurrPos[I];
+    D := FCurrVect[I];
     Dist := P2 - P;
     DistMag := Mag(Dist);
     DistMagCube := DistMag * DistMag * DistMag;
@@ -188,6 +189,15 @@ begin
     Result.Add(F);
   end;
   Result := Result * FBoost * 1000;
+end;
+
+function TWireLoop.WireLength: Double;
+var
+  S: TVector;
+begin
+  Result := 0;
+  for S in FSegments do
+    Result += Mag(S);
 end;
 
 constructor TWireLoop.Create;
@@ -220,7 +230,7 @@ begin
   if not FileExists(FileName) then
     exit;
 
-  FResolution := 0.5;
+  FResolution := 1;
   FSensorHeight := 10;
   FBoost := 100;
 
