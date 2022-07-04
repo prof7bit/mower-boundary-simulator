@@ -12,8 +12,7 @@ uses
 type
   TLineResult = class
     FY: Integer;
-    FMag: array of Byte;
-    FDir: array of Boolean;
+    FColors: array of TColor;
   end;
 
   TResultQueue = specialize TDeque<TLineResult>;
@@ -88,14 +87,14 @@ var
   V, F: TVector;
   MagZ: Integer;
   LR: TLineResult;
+  C, C1: Byte;
 begin
   FreeOnTerminate := True;
   W := FormMain.Image1.ClientRect.Width;
   for Y := FYStart to FYEnd do begin
     LR := TLineResult.Create;
     LR.FY := Y;
-    SetLength(LR.FMag, W);
-    SetLength(LR.FDir, W);
+    SetLength(LR.FColors, W);
     for X := 0 to W - 1 do begin
       V := FormMain.FLoop.PlotPlane.ScreenToVector(X, Y);
       V.Z += FormMain.FLoop.SensorHeight;
@@ -106,10 +105,19 @@ begin
       MagZ := Round(Sqrt(abs(F.Z)));
       if MagZ > 255 then MagZ := 255;
 
-      LR.FMag[X] := MagZ;
-      LR.FDir[X] := F.Z > 0;
+      C := 255 - MagZ;
+      if F.Z > 0 then begin
+        // inside of loop
+        C1 := 255 - MagZ div 2;
+        LR.FColors[X] := RGBToColor(C, C1, C);
+      end
+      else begin
+        // outside of loop
+        LR.FColors[X] := RGBToColor(255, C, C);
+      end;
     end;
     FormMain.PostResult(LR);
+
     if FormMain.FWantStop or Terminated then
       break;
   end;
@@ -265,7 +273,7 @@ begin
     if Y2 > Image1.ClientRect.Height then
       Y2 := Image1.ClientRect.Height;
     TWorkerThread.Create(Y, Y2);
-    Y := Y2;
+    Y := Y2 + 1;
   end;
 
   Bitmap := Image1.Picture.Bitmap;
@@ -275,27 +283,16 @@ begin
     LR := PopResult;
     if Assigned(LR) then begin
       Y := LR.FY;
-      for X := 0 to Length(LR.FMag) - 1 do begin
-        Mag := LR.FMag[X];
-        Dir := LR.FDir[X];
-        C := 255 - Mag;
-        C1 := 255 - Mag div 2;
-        if Dir then begin
-          // inside of loop
-          Canv.Pixels[X,Y] := RGBToColor(C, C1, C);
-        end
-        else begin
-          // outside of loop
-          Canv.Pixels[X,Y] := RGBToColor(255, C, C);
-        end;
+      for X := 0 to Length(LR.FColors) - 1 do begin
+        Canv.Pixels[X,Y] := LR.FColors[X];
       end;
       LR.Free;
       Inc(WireHiddenCounter);
       if WireHiddenCounter > 64 then begin
         DrawWire;
+        Application.ProcessMessages;
         WireHiddenCounter := 0;
       end;
-      Application.ProcessMessages;
     end
     else begin
       if WireHiddenCounter > 0 then begin
