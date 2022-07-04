@@ -9,10 +9,27 @@ uses
   WireLoop, Vectors, Math, FileUtil, LazFileUtils, IniFiles, DebugPrint,
   UTF8Process, gdeque, syncobjs;
 
+{$ifdef windows}
+  {$define pixel_bgr}
+{$endif}
+
 type
+  TPixel = packed record
+  {$ifdef pixel_bgr}
+    B: Byte;
+    G: Byte;
+    R: Byte;
+  {$else}
+    B: Byte;
+    G: Byte;
+    R: Byte;
+    A: Byte;
+  {$endif}
+  end;
+
   TLineResult = class
     FY: Integer;
-    FPixelRow: array of UInt32;
+    FPixelRow: array of TPixel;
   end;
 
   TResultQueue = specialize TDeque<TLineResult>;
@@ -69,16 +86,21 @@ var
 
 implementation
 
-{$R *.lfm}
-
-function RGBToRaw(R, G, B: Byte): UInt32;
+function Pixel(R, G, B: Byte): TPixel;
 begin
-  {$ifdef windows}
-  Result := (R << 16) or (G << 8) or B;
+  {$ifdef pixel_bgr}
+  Result.B := B;
+  Result.G := G;
+  Result.R := R;
   {$else}
-  Result := $ff000000 or (R << 16) or (G << 8) or B;
+  Result.B := B;
+  Result.G := G;
+  Result.R := R;
+  Result.A := 255;
   {$endif}
 end;
+
+{$R *.lfm}
 
 { TWorkerThread }
 
@@ -118,11 +140,11 @@ begin
       if F.Z > 0 then begin
         // inside of loop
         C1 := 255 - MagZ div 2;
-        LR.FPixelRow[X] := RGBToRaw(C, C1, C);
+        LR.FPixelRow[X] := Pixel(C, C1, C);
       end
       else begin
         // outside of loop
-        LR.FPixelRow[X] := RGBToRaw(255, C, C);
+        LR.FPixelRow[X] := Pixel(255, C, C);
       end;
     end;
     FormMain.PostResult(LR);
@@ -198,7 +220,6 @@ begin
   FLoop.PlotPlane.SetScreenRect(Image1.ClientRect);
   FLoop.Resoluton := 0.5;
   with image1.Picture.Bitmap do begin
-    PixelFormat := pf32bit;
     SetSize(Image1.Width, Image1.Height);
     Canvas.Brush.Color := clWhite;
     Canvas.FillRect(0, 0, Image1.Width, Image1.Height);
@@ -288,7 +309,7 @@ begin
       W := Length(LR.FPixelRow);
       Bitmap.BeginUpdate();
       SL := Bitmap.ScanLine[Y];
-      Move(LR.FPixelRow[0], SL[0], W * 4);
+      Move(LR.FPixelRow[0], SL[0], W * SizeOf(TPixel));
       LR.Free;
       Bitmap.EndUpdate;
       WireHidden := True;
