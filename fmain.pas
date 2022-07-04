@@ -1,7 +1,7 @@
 unit FMain;
 
 {$mode objfpc}{$H+}
-
+{$WARN 5044 off : Symbol "$1" is not portable}
 interface
 
 uses
@@ -12,7 +12,7 @@ uses
 type
   TLineResult = class
     FY: Integer;
-    FColors: array of TColor;
+    FPixelRow: array of UInt32;
   end;
 
   TResultQueue = specialize TDeque<TLineResult>;
@@ -71,6 +71,15 @@ implementation
 
 {$R *.lfm}
 
+function RGBToRaw(R, G, B: Byte): UInt32;
+begin
+  {$ifdef windows}
+  Result := (R << 16) or (G << 8) or B;
+  {$else}
+  Result := $ff000000 or (R << 16) or (G << 8) or B;
+  {$endif}
+end;
+
 { TWorkerThread }
 
 constructor TWorkerThread.Create(YStart, YEnd: Integer);
@@ -94,7 +103,7 @@ begin
   for Y := FYStart to FYEnd do begin
     LR := TLineResult.Create;
     LR.FY := Y;
-    SetLength(LR.FColors, W);
+    SetLength(LR.FPixelRow, W);
     for X := 0 to W - 1 do begin
       V := FormMain.FLoop.PlotPlane.ScreenToVector(X, Y);
       V.Z += FormMain.FLoop.SensorHeight;
@@ -109,11 +118,11 @@ begin
       if F.Z > 0 then begin
         // inside of loop
         C1 := 255 - MagZ div 2;
-        LR.FColors[X] := RGBToColor(C, C1, C);
+        LR.FPixelRow[X] := RGBToRaw(C, C1, C);
       end
       else begin
         // outside of loop
-        LR.FColors[X] := RGBToColor(255, C, C);
+        LR.FPixelRow[X] := RGBToRaw(255, C, C);
       end;
     end;
     FormMain.PostResult(LR);
@@ -189,6 +198,7 @@ begin
   FLoop.PlotPlane.SetScreenRect(Image1.ClientRect);
   FLoop.Resoluton := 0.5;
   with image1.Picture.Bitmap do begin
+    PixelFormat := pf32bit;
     SetSize(Image1.Width, Image1.Height);
     Canvas.Brush.Color := clWhite;
     Canvas.FillRect(0, 0, Image1.Width, Image1.Height);
@@ -247,65 +257,54 @@ end;
 procedure TFormMain.DrawField;
 var
   NumThreads: Integer;
-  Y, Y2, X, H, I: Integer;
-  C, C1: Byte;
+  Y, Y2, H, W, I: Integer;
   LR: TLineResult;
-  Canv: TCanvas;
-  WireHiddenCounter: Integer;
+  WireHidden: Boolean;
   Bitmap: TBitmap;
   SL: PUInt32;
-  Raw: PUInt32;
-
-  Mag: Integer;
-  Dir: Boolean;
 
   T0: TDateTime;
 begin
   T0 := Now;
   FWantStop := False;
   DrawWire;
-  WireHiddenCounter := 0;
+  WireHidden := False;
   NumThreads := GetSystemThreadCount;
   Y := 0;
   H := Image1.ClientRect.Height div NumThreads;
   for I := 0 to NumThreads - 1 do begin
     Y2 := Y + H;
-    if Y2 > Image1.ClientRect.Height then
-      Y2 := Image1.ClientRect.Height;
+    if Y2 > Image1.ClientRect.Height - 1 then
+      Y2 := Image1.ClientRect.Height - 1;
     TWorkerThread.Create(Y, Y2);
     Y := Y2 + 1;
   end;
 
   Bitmap := Image1.Picture.Bitmap;
-  Canv := Bitmap.Canvas;
-
   repeat
     LR := PopResult;
     if Assigned(LR) then begin
       Y := LR.FY;
-      for X := 0 to Length(LR.FColors) - 1 do begin
-        Canv.Pixels[X,Y] := LR.FColors[X];
-      end;
+      W := Length(LR.FPixelRow);
+      Bitmap.BeginUpdate();
+      SL := Bitmap.ScanLine[Y];
+      Move(LR.FPixelRow[0], SL[0], W * 4);
       LR.Free;
-      Inc(WireHiddenCounter);
-      if WireHiddenCounter > 64 then begin
-        DrawWire;
-        Application.ProcessMessages;
-        WireHiddenCounter := 0;
-      end;
+      Bitmap.EndUpdate;
+      WireHidden := True;
     end
     else begin
-      if WireHiddenCounter > 0 then begin
+      if WireHidden then begin
         DrawWire;
-        WireHiddenCounter := 0;
+        WireHidden := False;
       end;
       Application.ProcessMessages;
       Sleep(1);
     end;
   until (FThreadCount = 0) and FResultQueue.IsEmpty;
-  if WireHiddenCounter > 0 then
+
+  if WireHidden then
     DrawWire;
-  Print('time: %f s', [(Now - T0) * 24 * 60 * 60]);
 end;
 
 procedure TFormMain.FormResize(Sender: TObject);
