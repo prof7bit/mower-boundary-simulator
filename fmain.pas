@@ -11,7 +11,7 @@ uses
 
 type
   TLineResult = class
-    FX: Integer;
+    FY: Integer;
     FMag: array of Byte;
     FDir: array of Boolean;
   end;
@@ -22,10 +22,10 @@ type
 
   TWorkerThread = class(TThread)
   private
-    FXStart: Integer;
-    FXEnd: Integer;
+    FYStart: Integer;
+    FYEnd: Integer;
   public
-    constructor Create(XStart, XEnd: Integer);
+    constructor Create(YStart, YEnd: Integer);
     procedure Execute; override;
   end;
 
@@ -74,29 +74,29 @@ implementation
 
 { TWorkerThread }
 
-constructor TWorkerThread.Create(XStart, XEnd: Integer);
+constructor TWorkerThread.Create(YStart, YEnd: Integer);
 begin
-  FXStart := XStart;
-  FXEnd := XEnd;
+  FYStart := YStart;
+  FYEnd := YEnd;
   Inc(FormMain.FThreadCount);
   inherited Create(False);
 end;
 
 procedure TWorkerThread.Execute;
 var
-  X, Y, H: Integer;
+  X, Y, W: Integer;
   V, F: TVector;
   MagZ: Integer;
   LR: TLineResult;
 begin
   FreeOnTerminate := True;
-  H := FormMain.Image1.ClientRect.Height;
-  for X := FXStart to FXEnd do begin
+  W := FormMain.Image1.ClientRect.Width;
+  for Y := FYStart to FYEnd do begin
     LR := TLineResult.Create;
-    LR.FX := X;
-    SetLength(LR.FMag, H);
-    SetLength(LR.FDir, H);
-    for Y := 0 to H - 1 do begin
+    LR.FY := Y;
+    SetLength(LR.FMag, W);
+    SetLength(LR.FDir, W);
+    for X := 0 to W - 1 do begin
       V := FormMain.FLoop.PlotPlane.ScreenToVector(X, Y);
       V.Z += FormMain.FLoop.SensorHeight;
 
@@ -106,8 +106,8 @@ begin
       MagZ := Round(Sqrt(abs(F.Z)));
       if MagZ > 255 then MagZ := 255;
 
-      LR.FMag[Y] := MagZ;
-      LR.FDir[Y] := F.Z > 0;
+      LR.FMag[X] := MagZ;
+      LR.FDir[X] := F.Z > 0;
     end;
     FormMain.PostResult(LR);
     if FormMain.FWantStop or Terminated then
@@ -239,7 +239,7 @@ end;
 procedure TFormMain.DrawField;
 var
   NumThreads: Integer;
-  X, X2, Y, W, I: Integer;
+  Y, Y2, X, H, I: Integer;
   C, C1: Byte;
   LR: TLineResult;
   Canv: TCanvas;
@@ -257,14 +257,14 @@ begin
   DrawWire;
   WireVisible := True;
   NumThreads := GetSystemThreadCount;
-  X := Image1.ClientRect.Left;
-  W := Image1.ClientRect.Width div NumThreads;
+  Y := 0;
+  H := Image1.ClientRect.Height div NumThreads;
   for I := 0 to NumThreads - 1 do begin
-    X2 := X + W;
-    if X2 > Image1.ClientRect.Right then
-      X2 := Image1.ClientRect.Right;
-    TWorkerThread.Create(X, X2);
-    X := X2;
+    Y2 := Y + H;
+    if Y2 > Image1.ClientRect.Height then
+      Y2 := Image1.ClientRect.Height;
+    TWorkerThread.Create(Y, Y2);
+    Y := Y2;
   end;
 
   Bitmap := Image1.Picture.Bitmap;
@@ -273,10 +273,10 @@ begin
   repeat
     LR := PopResult;
     if Assigned(LR) then begin
-      X := LR.FX;
-      for Y := 0 to Length(LR.FMag) - 1 do begin
-        Mag := LR.FMag[Y];
-        Dir := LR.FDir[Y];
+      Y := LR.FY;
+      for X := 0 to Length(LR.FMag) - 1 do begin
+        Mag := LR.FMag[X];
+        Dir := LR.FDir[X];
         C := 255 - Mag;
         C1 := 255 - Mag div 2;
         if Dir then begin
