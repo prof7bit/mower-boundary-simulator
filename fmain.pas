@@ -6,9 +6,28 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ExtCtrls, StdCtrls,
-  WireLoop, Vectors, Math, FileUtil, LazFileUtils, IniFiles, DebugPrint;
+  WireLoop, Vectors, Math, FileUtil, LazFileUtils, IniFiles, DebugPrint,
+  UTF8Process, gdeque, syncobjs;
 
 type
+  TLineResult = class
+    FX: Integer;
+    FMag: array of Byte;
+    FDir: array of Boolean;
+  end;
+
+  TResultQueue = specialize TDeque<TLineResult>;
+
+  { TWorkerThread }
+
+  TWorkerThread = class(TThread)
+  private
+    FXStart: Integer;
+    FXEnd: Integer;
+  public
+    constructor Create(XStart, XEnd: Integer);
+    procedure Execute; override;
+  end;
 
   { TFormMain }
 
@@ -17,7 +36,7 @@ type
     ButtonReload: TButton;
     ComboBoxModel: TComboBox;
     Image1: TImage;
-    procedure Button1Click(Sender: TObject);
+    Timer1: TTimer;
     procedure ButtonReloadClick(Sender: TObject);
     procedure ButtonSaveClick(Sender: TObject);
     procedure ComboBoxModelChange(Sender: TObject);
@@ -28,13 +47,21 @@ type
     procedure DrawWire;
     procedure DrawField;
     procedure FormResize(Sender: TObject);
+    procedure PostResult(R: TLineResult);
+    function PopResult: TLineResult;
+    procedure Timer1Timer(Sender: TObject);
   private
     FIni: TIniFile;
     FLoop: TWireLoop;
-    FWantClose: Boolean;
+    FWantStop: Boolean;
+    FResultQueue : TResultQueue;
+    FResultLock: TCriticalSection;
+    FThreadCount: Integer;
+    FMustRedraw: Boolean;
     procedure FillCombo;
-    procedure AsyncRedraw(Data: PtrInt);
-  public
+    procedure Redraw;
+    procedure StopAndWaitThreads;
+   public
 
   end;
 
@@ -45,12 +72,58 @@ implementation
 
 {$R *.lfm}
 
+{ TWorkerThread }
+
+constructor TWorkerThread.Create(XStart, XEnd: Integer);
+begin
+  FXStart := XStart;
+  FXEnd := XEnd;
+  Inc(FormMain.FThreadCount);
+  inherited Create(False);
+end;
+
+procedure TWorkerThread.Execute;
+var
+  X, Y, H: Integer;
+  V, F: TVector;
+  MagZ: Integer;
+  LR: TLineResult;
+begin
+  FreeOnTerminate := True;
+  H := FormMain.Image1.ClientRect.Height;
+  for X := FXStart to FXEnd do begin
+    LR := TLineResult.Create;
+    LR.FX := X;
+    SetLength(LR.FMag, H);
+    SetLength(LR.FDir, H);
+    for Y := 0 to H - 1 do begin
+      V := FormMain.FLoop.PlotPlane.ScreenToVector(X, Y);
+      V.Z += FormMain.FLoop.SensorHeight;
+
+      F := FormMain.FLoop.CalcFieldAt(V);
+
+      // compress the range using square root
+      MagZ := Round(Sqrt(abs(F.Z)));
+      if MagZ > 255 then MagZ := 255;
+
+      LR.FMag[Y] := MagZ;
+      LR.FDir[Y] := F.Z > 0;
+    end;
+    FormMain.PostResult(LR);
+    if FormMain.FWantStop or Terminated then
+      break;
+  end;
+  InterlockedDecrement(FormMain.FThreadCount);
+end;
+
 { TFormMain }
 
 procedure TFormMain.FormCreate(Sender: TObject);
 var
   S: String;
 begin
+  FResultLock := TCriticalSection.Create;
+  FResultQueue := TResultQueue.Create;
   S := ExtractFileNameWithoutExt(Application.ExeName);
   FIni := TIniFile.Create(S + '.ini');
   Top := FIni.ReadInteger('UI', 'WinTop', Top);
@@ -62,11 +135,6 @@ begin
   FillCombo;
   ComboBoxModel.Text := FIni.ReadString('model', 'name', '');
   ComboBoxModelChange(nil);
-end;
-
-procedure TFormMain.Button1Click(Sender: TObject);
-begin
-  DrawField;
 end;
 
 procedure TFormMain.ButtonReloadClick(Sender: TObject);
@@ -84,14 +152,15 @@ end;
 
 procedure TFormMain.ComboBoxModelChange(Sender: TObject);
 begin
+  StopAndWaitThreads;
   FLoop.LoadLoop(ComboBoxModel.Text);
   FIni.WriteString('model', 'name', ComboBoxModel.Text);
-  Application.QueueAsyncCall(@AsyncRedraw, 0);
+  FMustRedraw := True;
 end;
 
 procedure TFormMain.FormCloseQuery(Sender: TObject; var CanClose: Boolean);
 begin
-  FWantClose := True;
+  FWantStop := True;
 end;
 
 procedure TFormMain.FormDestroy(Sender: TObject);
@@ -103,6 +172,8 @@ begin
   FIni.UpdateFile;
   FreeAndNil(FIni);
   FreeAndNil(FLoop);
+  FreeAndNil(FResultQueue);
+  FreeAndNil(FResultLock);
 end;
 
 procedure TFormMain.ClearDrawing;
@@ -167,55 +238,105 @@ end;
 
 procedure TFormMain.DrawField;
 var
-  X, Y: Integer;
-  C: Integer;
-  V, F: TVector;
-  Canv : TCanvas;
-  MZ: Integer;
+  NumThreads: Integer;
+  X, X2, Y, W, I: Integer;
+  C, C1: Byte;
+  LR: TLineResult;
+  Canv: TCanvas;
+  WireVisible: Boolean;
+  Bitmap: TBitmap;
+  SL: PUInt32;
+
+  Mag: Integer;
+  Dir: Boolean;
+
   T0: TDateTime;
 begin
   T0 := Now;
-  FWantClose := False;
-  FLoop.Resoluton := 1;
-  Canv := Image1.Picture.Bitmap.Canvas;
-  for X := Image1.ClientRect.Left to Image1.ClientRect.Right do begin
-    for Y := Image1.ClientRect.Top to Image1.ClientRect.Bottom do begin
-      V := FLoop.PlotPlane.ScreenToVector(X, Y);
-
-      V.Z += FLoop.SensorHeight;
-      F := FLoop.CalcFieldAt(V);
-
-      MZ := Round(F.Z);
-      if MZ > 255 then
-        MZ := 255;
-      if MZ < -255 then
-        MZ := -255;
-
-      if MZ > 0 then begin
-        // inside of loop
-        C := 255 - MZ;
-        Canv.Pixels[X,Y] := RGBToColor(C, 255, C);;
-      end
-      else begin
-        // outside of loop
-        C := 255 + MZ;
-        Canv.Pixels[X,Y] := RGBToColor(255, C, C);;
-      end;
-
-    end;
-    DrawWire;
-    Application.ProcessMessages;
-    if FWantClose then
-      Break;
-  end;
+  FWantStop := False;
   DrawWire;
-  Print((Now - T0) * 24 * 60 * 60);
+  WireVisible := True;
+  NumThreads := GetSystemThreadCount;
+  X := Image1.ClientRect.Left;
+  W := Image1.ClientRect.Width div NumThreads;
+  for I := 0 to NumThreads - 1 do begin
+    X2 := X + W;
+    if X2 > Image1.ClientRect.Right then
+      X2 := Image1.ClientRect.Right;
+    TWorkerThread.Create(X, X2);
+    X := X2;
+  end;
+
+  Bitmap := Image1.Picture.Bitmap;
+  Canv := Bitmap.Canvas;
+
+  repeat
+    LR := PopResult;
+    if Assigned(LR) then begin
+      X := LR.FX;
+      for Y := 0 to Length(LR.FMag) - 1 do begin
+        Mag := LR.FMag[Y];
+        Dir := LR.FDir[Y];
+        C := 255 - Mag;
+        C1 := 255 - Mag div 2;
+        if Dir then begin
+          // inside of loop
+          Canv.Pixels[X,Y] := RGBToColor(C, C1, C);
+        end
+        else begin
+          // outside of loop
+          Canv.Pixels[X,Y] := RGBToColor(255, C, C);
+        end;
+      end;
+      LR.Free;
+      WireVisible := False;
+      Application.ProcessMessages;
+    end
+    else begin
+      if not WireVisible then begin
+        DrawWire;
+        WireVisible := True;
+      end;
+      Application.ProcessMessages;
+      Sleep(1);
+    end;
+  until (FThreadCount = 0) and FResultQueue.IsEmpty;
+  if not WireVisible then
+    DrawWire;
+  Print('time: %f s', [(Now - T0) * 24 * 60 * 60]);
 end;
 
 procedure TFormMain.FormResize(Sender: TObject);
 begin
-  FWantClose := True;
-  Application.QueueAsyncCall(@AsyncRedraw, 0);
+  StopAndWaitThreads;
+  FMustRedraw := True;
+end;
+
+procedure TFormMain.PostResult(R: TLineResult);
+begin
+  FResultLock.Acquire;
+  FResultQueue.PushBack(R);
+  FResultLock.Release;
+end;
+
+function TFormMain.PopResult: TLineResult;
+begin
+  if FResultQueue.IsEmpty then
+    Result := nil
+  else begin
+    FResultLock.Acquire;
+    Result := FResultQueue.Front;
+    FResultQueue.PopFront;
+    FResultLock.Release;
+  end;
+end;
+
+procedure TFormMain.Timer1Timer(Sender: TObject);
+begin
+  if FMustRedraw then begin
+    FMustRedraw := False;
+    Redraw;
+  end;
 end;
 
 procedure TFormMain.FillCombo;
@@ -234,10 +355,20 @@ begin
   ComboBoxModel.Text := T;
 end;
 
-procedure TFormMain.AsyncRedraw(Data: PtrInt);
+procedure TFormMain.Redraw;
 begin
+  StopAndWaitThreads;
   ClearDrawing;
   DrawField;
+end;
+
+procedure TFormMain.StopAndWaitThreads;
+begin
+  FWantStop := True;
+  while FThreadCount > 0 do begin
+    Sleep(1);
+  end;
+  FResultQueue.Clear;
 end;
 
 end.

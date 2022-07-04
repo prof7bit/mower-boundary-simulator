@@ -2,7 +2,7 @@
 # Kreuss Loops for narrow passages
 #
 
-boost 8000
+boost 200
 height 10
 
 # southern wire going eastwards

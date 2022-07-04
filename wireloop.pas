@@ -187,7 +187,7 @@ begin
     F := (D * Dist) / DistMagCube;
     Result.Add(F);
   end;
-  Result := Result * FBoost;
+  Result := Result * FBoost * 1000;
 end;
 
 constructor TWireLoop.Create;
@@ -222,7 +222,7 @@ begin
 
   FResolution := 0.5;
   FSensorHeight := 10;
-  FBoost := 5000;
+  FBoost := 100;
 
   FS := DefaultFormatSettings;
   FS.DecimalSeparator := '.';

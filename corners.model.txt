@@ -1,4 +1,4 @@
-boost 8000
+boost 300
 height 10
 
 wire -100 0

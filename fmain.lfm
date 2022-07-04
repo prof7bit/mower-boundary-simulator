@@ -76,4 +76,10 @@ object FormMain: TFormMain
     OnClick = ButtonSaveClick
     TabOrder = 2
   end
+  object Timer1: TTimer
+    Interval = 100
+    OnTimer = Timer1Timer
+    Left = 48
+    Top = 72
+  end
 end
