@@ -56,6 +56,7 @@ type
     procedure ButtonReloadClick(Sender: TObject);
     procedure ButtonSaveClick(Sender: TObject);
     procedure ComboBoxModelChange(Sender: TObject);
+    procedure ComboBoxModelDropDown(Sender: TObject);
     procedure FormCloseQuery(Sender: TObject; var CanClose: Boolean);
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
@@ -195,6 +196,11 @@ begin
   FLoop.LoadLoop(ComboBoxModel.Text);
   FIni.WriteString('model', 'name', ComboBoxModel.Text);
   FMustRedraw := True;
+end;
+
+procedure TFormMain.ComboBoxModelDropDown(Sender: TObject);
+begin
+  FillCombo;
 end;
 
 procedure TFormMain.FormCloseQuery(Sender: TObject; var CanClose: Boolean);

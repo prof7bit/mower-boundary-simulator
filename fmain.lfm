@@ -39,6 +39,7 @@ object FormMain: TFormMain
     BorderSpacing.Top = 5
     ItemHeight = 18
     OnChange = ComboBoxModelChange
+    OnDropDown = ComboBoxModelDropDown
     ReadOnly = True
     Style = csDropDownList
     TabOrder = 0
