@@ -22,6 +22,8 @@ var
 procedure Print(Txt: String);
 begin
   {$ifdef windows}
+  if not Assigned(F) then
+    F := TFileStream.Create(FILENAME, fmCreate);
   F.Write(Txt[1], Length(Txt));
   F.Write(LineEnding, Length(LineEnding));
   {$else}
@@ -44,13 +46,8 @@ begin
   Print(Format(Fmt, Args));
 end;
 
-{$ifdef windows}
-initialization
-F := TFileStream.Create(FILENAME, fmCreate);
-
 finalization
-F.Free;
-
-{$endif}
+if Assigned(F) then
+  FreeAndNil(F);
 end.
 
