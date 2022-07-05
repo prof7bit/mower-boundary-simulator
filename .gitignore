@@ -5,3 +5,5 @@ boundary_visualizer
 *.png
 lib
 debug.txt
+*.tar.gz
+*.zip
