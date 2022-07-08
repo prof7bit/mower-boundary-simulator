@@ -252,6 +252,7 @@ var
     X1 := X + Size * Round(Plane.Scale);
     Y1 := Y;
     Canv.Pen.Color := clBlack;
+    Canv.Pen.Style := psSolid;
     Canv.Font.Size := 10;
     Canv.Brush.Style := bsClear;
     Canv.Line(X, Y, X1, Y1);
@@ -263,7 +264,8 @@ var
 begin
   Plane := FLoop.PlotPlane;
   Canv := image1.Picture.Bitmap.Canvas;
-  Canv.Pen.Color := clGreen;
+  Canv.Pen.Color := clBlue;
+  Canv.Pen.Style := psSolid;
   Canv.Pen.Width := 1;
 
   P := Vector(0, 0, 0);
