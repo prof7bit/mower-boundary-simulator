@@ -6,6 +6,7 @@ object FormMain: TFormMain
   Caption = 'prof7bit''s Mower Boundary Field Simulator'
   ClientHeight = 581
   ClientWidth = 830
+  OnActivate = FormActivate
   OnCloseQuery = FormCloseQuery
   OnCreate = FormCreate
   OnDestroy = FormDestroy
@@ -78,6 +79,7 @@ object FormMain: TFormMain
     TabOrder = 2
   end
   object Timer1: TTimer
+    Enabled = False
     Interval = 100
     OnTimer = Timer1Timer
     Left = 48

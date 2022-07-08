@@ -57,6 +57,7 @@ type
     procedure ButtonSaveClick(Sender: TObject);
     procedure ComboBoxModelChange(Sender: TObject);
     procedure ComboBoxModelDropDown(Sender: TObject);
+    procedure FormActivate(Sender: TObject);
     procedure FormCloseQuery(Sender: TObject; var CanClose: Boolean);
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
@@ -201,6 +202,11 @@ end;
 procedure TFormMain.ComboBoxModelDropDown(Sender: TObject);
 begin
   FillCombo;
+end;
+
+procedure TFormMain.FormActivate(Sender: TObject);
+begin
+  Timer1.Enabled := True;
 end;
 
 procedure TFormMain.FormCloseQuery(Sender: TObject; var CanClose: Boolean);
