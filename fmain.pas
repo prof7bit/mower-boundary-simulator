@@ -253,7 +253,7 @@ var
     Y1 := Y;
     Canv.Pen.Color := clBlack;
     Canv.Pen.Style := psSolid;
-    Canv.Font.Size := 10;
+    Canv.Font.Size := 9;
     Canv.Font.Quality := fqAntialiased;
     Canv.Brush.Style := bsClear;
     Canv.Line(X, Y, X1, Y1);
