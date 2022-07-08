@@ -11,6 +11,7 @@ object FormMain: TFormMain
   OnCreate = FormCreate
   OnDestroy = FormDestroy
   OnResize = FormResize
+  LCLVersion = '2.2.3.0'
   object Image1: TImage
     AnchorSideLeft.Control = Owner
     AnchorSideTop.Control = ComboBoxModel
